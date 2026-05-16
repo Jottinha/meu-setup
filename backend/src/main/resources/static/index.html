@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeuSetup — Instalador Automático</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <div class="container">
+        <div class="header-brand">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <h1>MeuSetup</h1>
+        </div>
+        <p>Selecione os programas, baixe o instalador e deixe o Winget fazer o resto.</p>
+    </div>
+</header>
+
+<main class="container">
+
+    <div class="selection-bar">
+        <span><strong id="count">0</strong> app(s) selecionado(s)</span>
+        <button id="clearBtn" class="btn-ghost">Limpar seleção</button>
+    </div>
+
+    <!-- Navegadores -->
+    <section class="category">
+        <h2 class="category-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            Navegadores
+        </h2>
+        <div class="apps-grid">
+            <label class="app-card">
+                <input type="checkbox" value="Google.Chrome">
+                <div class="app-info">
+                    <span class="app-name">Google Chrome</span>
+                    <span class="app-id">Google.Chrome</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="Mozilla.Firefox">
+                <div class="app-info">
+                    <span class="app-name">Mozilla Firefox</span>
+                    <span class="app-id">Mozilla.Firefox</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="Brave.Brave">
+                <div class="app-info">
+                    <span class="app-name">Brave</span>
+                    <span class="app-id">Brave.Brave</span>
+                </div>
+            </label>
+        </div>
+    </section>
+
+    <!-- Desenvolvimento -->
+    <section class="category">
+        <h2 class="category-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+            </svg>
+            Desenvolvimento
+        </h2>
+        <div class="apps-grid">
+            <label class="app-card">
+                <input type="checkbox" value="Microsoft.VisualStudioCode">
+                <div class="app-info">
+                    <span class="app-name">VS Code</span>
+                    <span class="app-id">Microsoft.VisualStudioCode</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="Git.Git">
+                <div class="app-info">
+                    <span class="app-name">Git</span>
+                    <span class="app-id">Git.Git</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="OpenJS.NodeJS.LTS">
+                <div class="app-info">
+                    <span class="app-name">Node.js LTS</span>
+                    <span class="app-id">OpenJS.NodeJS.LTS</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="Python.Python.3.12">
+                <div class="app-info">
+                    <span class="app-name">Python 3.12</span>
+                    <span class="app-id">Python.Python.3.12</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="EclipseAdoptium.Temurin.21.JDK">
+                <div class="app-info">
+                    <span class="app-name">Temurin JDK 21</span>
+                    <span class="app-id">EclipseAdoptium.Temurin.21.JDK</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="JetBrains.IntelliJIDEA.Community">
+                <div class="app-info">
+                    <span class="app-name">IntelliJ IDEA Community</span>
+                    <span class="app-id">JetBrains.IntelliJIDEA.Community</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="Docker.DockerDesktop">
+                <div class="app-info">
+                    <span class="app-name">Docker Desktop</span>
+                    <span class="app-id">Docker.DockerDesktop</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="Postman.Postman">
+                <div class="app-info">
+                    <span class="app-name">Postman</span>
+                    <span class="app-id">Postman.Postman</span>
+                </div>
+            </label>
+        </div>
+    </section>
+
+    <!-- Produtividade -->
+    <section class="category">
+        <h2 class="category-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            Produtividade
+        </h2>
+        <div class="apps-grid">
+            <label class="app-card">
+                <input type="checkbox" value="Notepad++.Notepad++">
+                <div class="app-info">
+                    <span class="app-name">Notepad++</span>
+                    <span class="app-id">Notepad++.Notepad++</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="7zip.7zip">
+                <div class="app-info">
+                    <span class="app-name">7-Zip</span>
+                    <span class="app-id">7zip.7zip</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="RARLab.WinRAR">
+                <div class="app-info">
+                    <span class="app-name">WinRAR</span>
+                    <span class="app-id">RARLab.WinRAR</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="Microsoft.PowerToys">
+                <div class="app-info">
+                    <span class="app-name">PowerToys</span>
+                    <span class="app-id">Microsoft.PowerToys</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="voidtools.Everything">
+                <div class="app-info">
+                    <span class="app-name">Everything</span>
+                    <span class="app-id">voidtools.Everything</span>
+                </div>
+            </label>
+        </div>
+    </section>
+
+    <!-- Mídia -->
+    <section class="category">
+        <h2 class="category-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+            </svg>
+            Mídia
+        </h2>
+        <div class="apps-grid">
+            <label class="app-card">
+                <input type="checkbox" value="VideoLAN.VLC">
+                <div class="app-info">
+                    <span class="app-name">VLC Media Player</span>
+                    <span class="app-id">VideoLAN.VLC</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="Spotify.Spotify">
+                <div class="app-info">
+                    <span class="app-name">Spotify</span>
+                    <span class="app-id">Spotify.Spotify</span>
+                </div>
+            </label>
+        </div>
+    </section>
+
+    <!-- Comunicação -->
+    <section class="category">
+        <h2 class="category-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            Comunicação
+        </h2>
+        <div class="apps-grid">
+            <label class="app-card">
+                <input type="checkbox" value="Discord.Discord">
+                <div class="app-info">
+                    <span class="app-name">Discord</span>
+                    <span class="app-id">Discord.Discord</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="Telegram.TelegramDesktop">
+                <div class="app-info">
+                    <span class="app-name">Telegram</span>
+                    <span class="app-id">Telegram.TelegramDesktop</span>
+                </div>
+            </label>
+        </div>
+    </section>
+
+    <!-- Gaming -->
+    <section class="category">
+        <h2 class="category-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/>
+                <circle cx="16" cy="11" r="1"/><circle cx="19" cy="13" r="1"/>
+                <path d="M3 6h18v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V6z"/>
+            </svg>
+            Gaming
+        </h2>
+        <div class="apps-grid">
+            <label class="app-card">
+                <input type="checkbox" value="Valve.Steam">
+                <div class="app-info">
+                    <span class="app-name">Steam</span>
+                    <span class="app-id">Valve.Steam</span>
+                </div>
+            </label>
+        </div>
+    </section>
+
+    <!-- Sistema -->
+    <section class="category">
+        <h2 class="category-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+            </svg>
+            Sistema
+        </h2>
+        <div class="apps-grid">
+            <label class="app-card">
+                <input type="checkbox" value="Rufus.Rufus">
+                <div class="app-info">
+                    <span class="app-name">Rufus</span>
+                    <span class="app-id">Rufus.Rufus</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="CPUID.CPU-Z">
+                <div class="app-info">
+                    <span class="app-name">CPU-Z</span>
+                    <span class="app-id">CPUID.CPU-Z</span>
+                </div>
+            </label>
+            <label class="app-card">
+                <input type="checkbox" value="TechPowerUp.GPU-Z">
+                <div class="app-info">
+                    <span class="app-name">GPU-Z</span>
+                    <span class="app-id">TechPowerUp.GPU-Z</span>
+                </div>
+            </label>
+        </div>
+    </section>
+
+    <div class="download-section">
+        <p class="download-hint">O instalador baixado pedirá permissão de Administrador e instalará tudo silenciosamente via Winget.</p>
+        <button id="downloadBtn" class="btn-primary" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span id="btnLabel">Selecione ao menos 1 app</span>
+        </button>
+    </div>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

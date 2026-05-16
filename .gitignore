@@ -1,0 +1,21 @@
+# Java / Maven
+backend/target/
+*.class
+*.jar
+*.war
+
+# Go build artifacts
+go-base/*.exe
+go-base/*.syso
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Docker
+.env

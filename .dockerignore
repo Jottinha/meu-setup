@@ -1,0 +1,5 @@
+**/.git
+**/target
+**/*.class
+go-base/base.exe
+go-base/rsrc_*.syso
