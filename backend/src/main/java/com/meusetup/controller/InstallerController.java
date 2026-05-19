@@ -1,6 +1,8 @@
 package com.meusetup.controller;
 
-import org.springframework.core.io.ClassPathResource;
+import com.meusetup.security.AppIdValidator;
+import com.meusetup.security.TrailerWriter;
+import com.meusetup.service.BaseExeProvider;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -12,41 +14,44 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api")
 public class InstallerController {
 
+    private final BaseExeProvider baseExe;
+    private final TrailerWriter trailerWriter;
+    private final AppIdValidator validator;
+
+    public InstallerController(BaseExeProvider baseExe,
+                               TrailerWriter trailerWriter,
+                               AppIdValidator validator) {
+        this.baseExe = baseExe;
+        this.trailerWriter = trailerWriter;
+        this.validator = validator;
+    }
+
     @PostMapping("/generate")
-    public ResponseEntity<byte[]> generateInstaller(@RequestBody List<String> appIds) throws IOException {
+    public ResponseEntity<byte[]> generateInstaller(@RequestBody List<String> appIds) {
         if (appIds == null || appIds.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione ao menos um aplicativo.");
         }
-
-        ClassPathResource resource = new ClassPathResource("base.exe");
-        if (!resource.exists()) {
-            throw new ResponseStatusException(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Executável base não encontrado. Compile o go-base primeiro."
-            );
+        if (appIds.size() > AppIdValidator.MAX_APPS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Limite de aplicativos excedido.");
+        }
+        for (String id : appIds) {
+            if (!validator.isAllowed(id)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID invalido.");
+            }
         }
 
-        byte[] baseBytes;
-        try (InputStream is = resource.getInputStream()) {
-            baseBytes = is.readAllBytes();
-        }
+        byte[] base = baseExe.get();
+        byte[] trailer = trailerWriter.build(appIds);
 
-        // Formato que o Go lê ao varrer o próprio binário de trás para frente
-        String appList = "||APPS:" + String.join(",", appIds) + "||";
-        byte[] suffix = appList.getBytes(StandardCharsets.UTF_8);
-
-        byte[] result = new byte[baseBytes.length + suffix.length];
-        System.arraycopy(baseBytes, 0, result, 0, baseBytes.length);
-        System.arraycopy(suffix, 0, result, baseBytes.length, suffix.length);
+        byte[] result = new byte[base.length + trailer.length];
+        System.arraycopy(base, 0, result, 0, base.length);
+        System.arraycopy(trailer, 0, result, base.length, trailer.length);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);

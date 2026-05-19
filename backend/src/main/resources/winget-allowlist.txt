@@ -1,0 +1,36 @@
+# IDs Winget autorizados para gerar instaladores.
+# Um ID por linha. Linhas em branco e iniciadas com '#' sao ignoradas.
+# Mantenha em sincronia com os checkboxes em static/index.html.
+
+# Navegadores
+Google.Chrome
+Mozilla.Firefox
+
+# Desenvolvimento
+Microsoft.VisualStudioCode
+Git.Git
+JetBrains.IntelliJIDEA.Community
+Docker.DockerDesktop
+Postman.Postman
+
+# Produtividade
+Notepad++.Notepad++
+7zip.7zip
+RARLab.WinRAR
+
+# Midia
+VideoLAN.VLC
+Spotify.Spotify
+
+# Comunicacao
+Discord.Discord
+
+# Gaming
+Valve.Steam
+EpicGames.EpicGamesLauncher
+
+# Sistema
+abbodi1406.vcredist
+Rufus.Rufus
+CPUID.CPU-Z
+TechPowerUp.GPU-Z

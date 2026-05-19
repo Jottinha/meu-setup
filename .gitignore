@@ -7,6 +7,7 @@ backend/target/
 # Go build artifacts
 go-base/*.exe
 go-base/*.syso
+backend/src/main/resources/base.exe
 
 # IDE
 .idea/
@@ -19,3 +20,8 @@ Thumbs.db
 
 # Docker
 .env
+
+# HMAC key (segredo de build, gerado por scripts/gen-hmac-key.ps1)
+hmac.key
+go-base/hmac.key
+backend/src/main/resources/hmac.key

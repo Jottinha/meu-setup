@@ -1,31 +1,38 @@
-# ── Stage 1: Compila o binário Go (Windows x64) ──────────────────────────────
-FROM golang:1.22-alpine AS go-builder
+# syntax=docker/dockerfile:1.7
+
+# Stage 1 - Compila o binario Go (Windows x64) com o hmac.key embedded
+FROM golang:1.23-alpine AS go-builder
 
 RUN apk add --no-cache git
-RUN go install github.com/tc-hib/go-winres@latest
+RUN go install github.com/tc-hib/go-winres@v0.3.3
 
 WORKDIR /src
 COPY go-base/ .
 
-RUN go-winres make && \
-    CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o base.exe .
+RUN --mount=type=secret,id=hmac_key,required=true \
+    cp /run/secrets/hmac_key ./hmac.key && \
+    go-winres make && \
+    CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
+        go build -trimpath -ldflags="-s -w" -o base.exe . && \
+    rm -f hmac.key
 
-# ── Stage 2: Compila o JAR Spring Boot ───────────────────────────────────────
+# Stage 2 - Compila o JAR Spring Boot com base.exe + hmac.key nos resources
 FROM maven:3.9-eclipse-temurin-21-alpine AS java-builder
 
 WORKDIR /app
 
-# Baixa dependências antes de copiar o código-fonte (melhor uso de cache)
 COPY backend/pom.xml .
 RUN mvn dependency:go-offline -q
 
-# Copia o base.exe compilado para dentro dos resources antes do build
 COPY --from=go-builder /src/base.exe ./src/main/resources/base.exe
 
 COPY backend/src ./src
-RUN mvn package -DskipTests -q
 
-# ── Stage 3: Imagem de runtime mínima ────────────────────────────────────────
+RUN --mount=type=secret,id=hmac_key,required=true \
+    cp /run/secrets/hmac_key ./src/main/resources/hmac.key && \
+    mvn package -DskipTests -q
+
+# Stage 3 - Imagem de runtime minima
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app

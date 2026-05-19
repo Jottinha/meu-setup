@@ -11,12 +11,12 @@ O fluxo completo tem três etapas:
 ```
 [Usuário no site] → marca checkboxes → clica em baixar
       ↓
-[Spring Boot] → lê base.exe + anexa lista de IDs → devolve Instalador.exe
+[Spring Boot] → valida IDs + assina lista com HMAC + anexa trailer ao base.exe
       ↓
-[Usuário executa Instalador.exe] → pede UAC → chama winget para cada app
+[Usuário executa Instalador.exe] → verifica HMAC → pede UAC → chama winget
 ```
 
-A "mágica" está no fato de que o Windows ignora texto colado no final de um `.exe`. O backend aproveita isso para personalizar o binário em tempo real sem recompilar nada: ele pega o `base.exe` fixo, gruda a lista de IDs no final e manda o arquivo resultante para o navegador. Quando o usuário executa esse arquivo, o programa Go lê os próprios bytes de trás para frente, extrai a lista e sai instalando.
+A "mágica" está no fato de que o Windows ignora bytes colados no final de um `.exe`. O backend aproveita isso para personalizar o binário em tempo real sem recompilar nada: ele pega o `base.exe` fixo, anexa um **trailer binário** (`payload JSON` + `HMAC-SHA256` + `length` + `magic`) e manda o arquivo resultante para o navegador. Quando o usuário executa esse arquivo, o programa Go faz `Seek` nos últimos bytes, verifica a assinatura HMAC com a chave embutida em build-time, e só então invoca o `winget` para cada ID — depois de uma validação por regex contra injeção de argumentos. Se o trailer estiver ausente, corrompido ou se a assinatura não bater, o executável recusa rodar.
 
 ---
 
@@ -26,12 +26,13 @@ O projeto tem três componentes de código e uma camada de infraestrutura:
 
 ### 1. `go-base/` — O executável inteligente (Go)
 
-É compilado **uma única vez** pelo desenvolvedor. Ao ser executado na máquina do usuário ele:
+É compilado **uma única vez** pelo desenvolvedor, com a chave HMAC embutida via `//go:embed hmac.key`. Ao ser executado na máquina do usuário ele:
 
-1. Lê o próprio arquivo binário do disco.
-2. Procura, a partir do final, pela string `||APPS:id1,id2,...||`.
-3. Extrai os IDs e roda `winget install --id <ID> --silent --accept-package-agreements --accept-source-agreements` para cada um.
-4. Mostra o progresso no console e aguarda ENTER ao terminar.
+1. Faz `Seek` nos últimos 44 bytes do próprio arquivo e valida o magic `MSTUP\x01\x00\x00`.
+2. Lê o tamanho do payload, o HMAC e o JSON anexados, e verifica a assinatura com `hmac.Equal` (constant-time).
+3. Faz parse do JSON `{"v":1,"apps":[...]}` e valida cada ID com regex (`^[A-Za-z0-9][A-Za-z0-9+.\-]{0,62}[A-Za-z0-9+]$`).
+4. Roda `winget install --id <ID> --exact --silent --accept-package-agreements --accept-source-agreements` para cada um.
+5. Mostra o progresso no console e aguarda ENTER ao terminar.
 
 O binário também carrega um manifesto XML do Windows (`main.manifest`) que força o prompt de UAC (permissão de Administrador) assim que é aberto — necessário para que o Winget consiga instalar os programas corretamente.
 
@@ -48,10 +49,10 @@ Content-Type: application/json
 
 Ao receber a requisição, ele:
 
-1. Carrega `base.exe` do classpath (`src/main/resources/`).
-2. Forma a string `||APPS:Google.Chrome,VideoLAN.VLC,7zip.7zip||` em UTF-8.
-3. Concatena os bytes do executável com os bytes dessa string.
-4. Retorna o resultado como `application/octet-stream` com o nome `Instalador.exe`.
+1. Rejeita listas vazias, com mais de 50 IDs, ou contendo qualquer ID fora da allowlist (`src/main/resources/winget-allowlist.txt`) ou que falhe na regex.
+2. Carrega `base.exe` (cacheado em memória no startup pelo `BaseExeProvider`).
+3. Monta o payload `{"v":1,"apps":[...]}` e calcula `HMAC-SHA256(MAGIC || PAYLOAD_LEN || PAYLOAD_JSON)` com a chave de `src/main/resources/hmac.key`.
+4. Concatena `base.exe + payload + hmac + length + magic` e devolve como `application/octet-stream`.
 
 O mesmo servidor Tomcat embutido serve o frontend estático na raiz (`/`).
 
@@ -90,24 +91,36 @@ MeuSetup/
 │   ├── go.mod
 │   └── build.ps1                       # Script de build local (Windows)
 │
+├── hmac.key                            # Segredo de build (gerado por scripts/gen-hmac-key.ps1, gitignored)
+├── scripts/
+│   └── gen-hmac-key.ps1                # Gera hmac.key idempotentemente
+│
 └── backend/                            # Componente Java (API + frontend)
-    ├── pom.xml                         # Dependências Maven (Spring Boot 3.3)
+    ├── pom.xml                         # Dependências Maven (Spring Boot 3.3.5)
     ├── Dockerfile                      # Dockerfile simples (uso local)
     └── src/main/
         ├── java/com/meusetup/
         │   ├── MeuSetupApplication.java
-        │   └── controller/
-        │       └── InstallerController.java   # POST /api/generate
+        │   ├── controller/
+        │   │   └── InstallerController.java   # POST /api/generate
+        │   ├── security/
+        │   │   ├── HmacKeyProvider.java
+        │   │   ├── AppIdValidator.java
+        │   │   └── TrailerWriter.java
+        │   └── service/
+        │       └── BaseExeProvider.java
         └── resources/
             ├── application.properties
             ├── base.exe                # Gerado pelo go-base/build.ps1 (não versionar)
-            └── static/                # Frontend servido pelo Tomcat
+            ├── hmac.key                # Copiado pelo build.ps1 (gitignored)
+            ├── winget-allowlist.txt    # IDs autorizados (mirror dos checkboxes)
+            └── static/                 # Frontend servido pelo Tomcat
                 ├── index.html
                 ├── style.css
                 └── app.js
 ```
 
-> **Atenção:** `backend/src/main/resources/base.exe` não existe no repositório — ele é gerado localmente pelo script de build do Go. Veja o passo a passo abaixo.
+> **Atenção:** `hmac.key`, `backend/src/main/resources/hmac.key` e `backend/src/main/resources/base.exe` não existem no repositório — são gerados localmente. Veja o passo a passo abaixo.
 
 ---
 
@@ -149,7 +162,17 @@ git clone <url-do-repositorio>
 cd MeuSetup
 ```
 
-### Passo 2 — Compile o executável Go
+### Passo 2 — Gere a chave HMAC (uma única vez)
+
+A chave protege a integridade do payload anexado ao `.exe`. Ela é embutida tanto no binário Go quanto no JAR Spring em build-time. **Cada clone do repositório precisa gerar a sua** — o arquivo está no `.gitignore` e não é compartilhado.
+
+```powershell
+.\scripts\gen-hmac-key.ps1
+```
+
+O script é idempotente: se `hmac.key` já existe na raiz, ele não sobrescreve. Para rotacionar a chave (invalida todos os instaladores antigos), apague o arquivo e rode de novo.
+
+### Passo 3 — Compile o executável Go
 
 Entre na pasta `go-base` e rode o script de build. Ele instala o `go-winres` automaticamente se ainda não estiver na sua máquina, gera o manifesto UAC, compila o `.exe` e o copia para o lugar certo dentro do backend.
 
@@ -171,7 +194,7 @@ Build concluído! base.exe gerado e copiado.
 
 > **Por que precisa do go-winres?** O compilador Go não embute manifestos UAC nativamente. O `go-winres` gera um arquivo `.syso` que o Go coleta automaticamente durante o build, injetando o manifesto no `.exe` final — sem ele, o instalador não pedirá permissão de Administrador.
 
-### Passo 3 — Inicie o servidor Spring Boot
+### Passo 4 — Inicie o servidor Spring Boot
 
 Volte para a raiz do projeto e entre na pasta `backend`:
 
@@ -186,7 +209,7 @@ O Maven vai baixar as dependências na primeira vez (pode demorar alguns minutos
 Started MeuSetupApplication in X.XXX seconds
 ```
 
-### Passo 4 — Acesse o site
+### Passo 5 — Acesse o site
 
 Abra o navegador e acesse:
 
@@ -202,11 +225,19 @@ Marque os programas, clique em **"Baixar Instalador"** e execute o `.exe` baixad
 
 O jeito mais simples de rodar o projeto. Não precisa de Go, Java nem Maven instalados — o Docker cuida do build completo.
 
-Na raiz do projeto:
+Antes do primeiro build, gere a chave HMAC (uma vez):
+
+```powershell
+.\scripts\gen-hmac-key.ps1
+```
+
+Depois:
 
 ```powershell
 docker compose up --build
 ```
+
+> O `docker-compose.yml` está configurado com `secrets` apontando para `./hmac.key` na raiz — o Compose passa o arquivo para o build via BuildKit (`--mount=type=secret`), então a chave nunca aparece como `COPY` numa camada da imagem. Build manual sem Compose: `docker build --secret id=hmac_key,src=./hmac.key -t meusetup .`
 
 Aguarde o build (alguns minutos na primeira vez — Go e Maven baixam dependências). Quando aparecer:
 
@@ -237,7 +268,10 @@ Para Railway, Render, Fly.io ou qualquer VPS, basta apontar o repositório — a
 
 ## Adicionando novos programas
 
-Para adicionar um app à lista do site, edite `backend/src/main/resources/static/index.html` e adicione um novo card na categoria adequada. O `value` do checkbox deve ser o **ID exato do Winget**.
+Para adicionar um app, edite **dois arquivos**:
+
+1. `backend/src/main/resources/static/index.html` — adicione um card na categoria adequada. O `value` deve ser o **ID exato do Winget**.
+2. `backend/src/main/resources/winget-allowlist.txt` — adicione a mesma string em uma linha. **Sem entrada aqui, o backend rejeita o ID com 400** (defesa contra apps fora da curadoria).
 
 ```html
 <label class="app-card">
@@ -259,15 +293,15 @@ winget search "nome do programa"
 
 ## Como o truque binário funciona
 
-O Windows carrega um `.exe` lendo apenas os cabeçalhos PE (Portable Executable) no início do arquivo e ignora completamente qualquer dado após o fim lógico do programa. Isso significa que é seguro colar texto arbitrário depois dos bytes do executável — o sistema operacional simplesmente o ignora na hora de rodar.
+O Windows carrega um `.exe` lendo apenas os cabeçalhos PE (Portable Executable) no início do arquivo e ignora completamente qualquer dado após o fim lógico do programa. Isso significa que é seguro colar bytes arbitrários depois dos bytes do executável — o sistema operacional simplesmente os ignora na hora de rodar.
 
 O backend explora isso assim:
 
 ```
-[bytes do base.exe] + [||APPS:Google.Chrome,VideoLAN.VLC||]
-         ↑                              ↑
-  executável intacto             texto ignorado pelo Windows,
-  (roda normalmente)             lido pelo próprio programa Go
+[bytes do base.exe] + [ JSON | HMAC(32B) | LEN(4B LE) | MAGIC(8B) ]
+         ↑                            ↑
+  executável intacto           trailer ignorado pelo Windows,
+  (roda normalmente)           lido e verificado pelo Go
 ```
 
-O programa Go, ao iniciar, lê o próprio arquivo do disco com `os.ReadFile`, procura a última ocorrência de `||APPS:` e extrai tudo até o `||` seguinte. Como a busca é feita de trás para frente com `strings.LastIndex`, ela sempre encontrará a lista correta no sufixo, independente do conteúdo binário do executável em si.
+O programa Go, ao iniciar, faz `Seek(SeekEnd, -8)` para validar o magic `MSTUP\x01\x00\x00`, depois lê `LEN`, `HMAC` e o payload JSON, recalcula o HMAC com a chave embutida via `//go:embed` e compara em tempo constante. Se qualquer byte do trailer for adulterado, ou se for adicionado um sufixo fora desse formato, a verificação falha e nada é instalado.

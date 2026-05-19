@@ -3,3 +3,7 @@
 **/*.class
 go-base/base.exe
 go-base/rsrc_*.syso
+
+# HMAC key — entra no build apenas via --mount=type=secret, nunca por COPY
+hmac.key
+**/hmac.key
