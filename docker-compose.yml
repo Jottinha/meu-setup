@@ -3,12 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      secrets:
-        - hmac_key
+      args:
+        HMAC_KEY: ${HMAC_KEY}
     ports:
       - "8080:8080"
     restart: unless-stopped
-
-secrets:
-  hmac_key:
-    file: ./hmac.key

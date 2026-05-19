@@ -3,14 +3,16 @@
 # Stage 1 - Compila o binario Go (Windows x64) com o hmac.key embedded
 FROM golang:1.23-alpine AS go-builder
 
+ARG HMAC_KEY
+
 RUN apk add --no-cache git
 RUN go install github.com/tc-hib/go-winres@v0.3.3
 
 WORKDIR /src
 COPY go-base/ .
 
-RUN --mount=type=secret,id=hmac_key,required=true \
-    cp /run/secrets/hmac_key ./hmac.key && \
+RUN test -n "$HMAC_KEY" || (echo "ERRO: HMAC_KEY nao definido (passe via --build-arg)" && exit 1) && \
+    printf '%s' "$HMAC_KEY" > ./hmac.key && \
     go-winres make && \
     CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
         go build -trimpath -ldflags="-s -w" -o base.exe . && \
@@ -18,6 +20,8 @@ RUN --mount=type=secret,id=hmac_key,required=true \
 
 # Stage 2 - Compila o JAR Spring Boot com base.exe + hmac.key nos resources
 FROM maven:3.9-eclipse-temurin-21-alpine AS java-builder
+
+ARG HMAC_KEY
 
 WORKDIR /app
 
@@ -28,8 +32,8 @@ COPY --from=go-builder /src/base.exe ./src/main/resources/base.exe
 
 COPY backend/src ./src
 
-RUN --mount=type=secret,id=hmac_key,required=true \
-    cp /run/secrets/hmac_key ./src/main/resources/hmac.key && \
+RUN test -n "$HMAC_KEY" || (echo "ERRO: HMAC_KEY nao definido (passe via --build-arg)" && exit 1) && \
+    printf '%s' "$HMAC_KEY" > ./src/main/resources/hmac.key && \
     mvn package -DskipTests -q
 
 # Stage 3 - Imagem de runtime minima
